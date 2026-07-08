@@ -3,12 +3,16 @@
 --   Keybind: RightShift = Show / Hide
 -- ================================================
 
+print("[AC Menu] Starting initialization...")
+
 local Players          = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService       = game:GetService("RunService")
 local Camera           = workspace.CurrentCamera
 local LocalPlayer      = Players.LocalPlayer
 local LocalCharacter   = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+print("[AC Menu] Services loaded, initializing state...")
 
 -- ══════════════════════════════════════
 --  STATE
@@ -52,42 +56,78 @@ local FlyVelocity = Instance.new("BodyVelocity")
 local FlyGyro = Instance.new("BodyGyro")
 
 -- ══════════════════════════════════════
---  RAYFIELD SETUP
+--  LOAD RAYFIELD
 -- ══════════════════════════════════════
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+print("[AC Menu] Loading Rayfield UI library...")
+
+local Rayfield
+local success = pcall(function()
+    Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not success or not Rayfield then
+    print("[AC Menu] ERROR: Failed to load Rayfield. Trying alternative...")
+    success = pcall(function()
+        Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Orion/main/source'))()
+    end)
+    
+    if not success or not Rayfield then
+        print("[AC Menu] ERROR: Could not load any UI library!")
+        return
+    end
+end
+
+print("[AC Menu] Rayfield loaded successfully!")
+
+-- ══════════════════════════════════════
+--  CREATE WINDOW
+-- ══════════════════════════════════════
+print("[AC Menu] Creating main window...")
 
 local Window = Rayfield:CreateWindow({
-    Name = "⚙  AC Test Menu",
-    LoadingTitle = "Loading...",
-    LoadingSubtitle = "Initializing",
+    Name = "⚙ AC Test Menu",
+    LoadingTitle = "AC Menu Loading",
+    LoadingSubtitle = "Please wait...",
     ConfigurationSaving = {
         Enabled = false,
     },
     KeySystem = false,
 })
 
+print("[AC Menu] Window created!")
+
+-- ══════════════════════════════════════
+--  TEAM CHECK
+-- ══════════════════════════════════════
+local function isSameTeam(player)
+    local playerTeam = player.Team
+    local localTeam = LocalPlayer.Team
+    
+    if playerTeam == nil or localTeam == nil then
+        return false
+    end
+    
+    return playerTeam == localTeam
+end
+
+print("[AC Menu] Team check function created")
+
 -- ══════════════════════════════════════
 --  AIMBOT TAB
 -- ══════════════════════════════════════
+print("[AC Menu] Creating Aimbot tab...")
+
 local AimbotTab = Window:CreateTab("🎯 Aimbot", 4483362458)
 
-local AimbotSection = AimbotTab:CreateSection("Aimbot")
+AimbotTab:CreateSection("Aimbot Settings")
 
 AimbotTab:CreateToggle({
-    Name = "Aimbot",
+    Name = "Aimbot (Lock to Head)",
     CurrentValue = false,
     Flag = "Aimbot",
     Callback = function(Value)
         State.Aimbot = Value
-    end,
-})
-
-AimbotTab:CreateToggle({
-    Name = "Aim Assist (Instant Lock)",
-    CurrentValue = false,
-    Flag = "AimAssist",
-    Callback = function(Value)
-        State.AimAssist = Value
+        print("[Aimbot] Toggled:", Value)
     end,
 })
 
@@ -97,13 +137,14 @@ AimbotTab:CreateToggle({
     Flag = "AutoShoot",
     Callback = function(Value)
         State.AutoShoot = Value
+        print("[AutoShoot] Toggled:", Value)
     end,
 })
 
-local FOVSection = AimbotTab:CreateSection("Field of View")
+AimbotTab:CreateSection("FOV Settings")
 
 AimbotTab:CreateToggle({
-    Name = "FOV Circle",
+    Name = "Show FOV Circle",
     CurrentValue = false,
     Flag = "FOVCircle",
     Callback = function(Value)
@@ -124,12 +165,16 @@ AimbotTab:CreateSlider({
     end,
 })
 
+print("[AC Menu] Aimbot tab created")
+
 -- ══════════════════════════════════════
 --  VISUALS TAB
 -- ══════════════════════════════════════
+print("[AC Menu] Creating Visuals tab...")
+
 local VisualsTab = Window:CreateTab("👁 Visuals", 4483362458)
 
-local ESPSection = VisualsTab:CreateSection("ESP")
+VisualsTab:CreateSection("ESP Settings")
 
 VisualsTab:CreateToggle({
     Name = "Enable ESP",
@@ -150,17 +195,6 @@ VisualsTab:CreateToggle({
 })
 
 VisualsTab:CreateToggle({
-    Name = "ESP Skeleton",
-    CurrentValue = false,
-    Flag = "ESPSkeleton",
-    Callback = function(Value)
-        State.ESPSkeleton = Value
-    end,
-})
-
-local ESPLineSection = VisualsTab:CreateSection("ESP Line")
-
-VisualsTab:CreateToggle({
     Name = "ESP Line",
     CurrentValue = false,
     Flag = "ESPLine",
@@ -171,15 +205,13 @@ VisualsTab:CreateToggle({
 
 VisualsTab:CreateDropdown({
     Name = "Line Origin",
-    Options = {"Top", "Side", "Bottom"},
+    Options = {"Top", "Center", "Bottom"},
     CurrentOption = {"Bottom"},
     Flag = "ESPLinePos",
     Callback = function(Option)
         State.ESPLinePos = Option[1]
     end,
 })
-
-local ESPNameSection = VisualsTab:CreateSection("ESP Name")
 
 VisualsTab:CreateToggle({
     Name = "ESP Name",
@@ -200,7 +232,7 @@ VisualsTab:CreateDropdown({
     end,
 })
 
-local HealthSection = VisualsTab:CreateSection("Health Bar")
+VisualsTab:CreateSection("Health & Distance")
 
 VisualsTab:CreateToggle({
     Name = "ESP Health Bar",
@@ -221,8 +253,6 @@ VisualsTab:CreateDropdown({
     end,
 })
 
-local DistSection = VisualsTab:CreateSection("Distance")
-
 VisualsTab:CreateToggle({
     Name = "ESP Distance",
     CurrentValue = false,
@@ -232,22 +262,16 @@ VisualsTab:CreateToggle({
     end,
 })
 
-VisualsTab:CreateDropdown({
-    Name = "Distance Position",
-    Options = {"Top", "Bottom"},
-    CurrentOption = {"Bottom"},
-    Flag = "ESPDistPos",
-    Callback = function(Option)
-        State.ESPDistPos = Option[1]
-    end,
-})
+print("[AC Menu] Visuals tab created")
 
 -- ══════════════════════════════════════
 --  PLAYER TAB
 -- ══════════════════════════════════════
+print("[AC Menu] Creating Player tab...")
+
 local PlayerTab = Window:CreateTab("🧍 Player", 4483362458)
 
-local MovementSection = PlayerTab:CreateSection("Movement")
+PlayerTab:CreateSection("Movement")
 
 PlayerTab:CreateToggle({
     Name = "Fly",
@@ -255,6 +279,7 @@ PlayerTab:CreateToggle({
     Flag = "Fly",
     Callback = function(Value)
         State.Fly = Value
+        print("[Fly] Toggled:", Value)
     end,
 })
 
@@ -277,6 +302,7 @@ PlayerTab:CreateToggle({
     Flag = "Velocity",
     Callback = function(Value)
         State.Velocity = Value
+        print("[Velocity] Toggled:", Value)
     end,
 })
 
@@ -293,14 +319,15 @@ PlayerTab:CreateSlider({
     end,
 })
 
-local MiscSection = PlayerTab:CreateSection("Misc")
+PlayerTab:CreateSection("Utilities")
 
 PlayerTab:CreateToggle({
-    Name = "TP to Nearest Player",
+    Name = "TP to Nearest Enemy",
     CurrentValue = false,
     Flag = "TPNearest",
     Callback = function(Value)
         State.TPNearest = Value
+        print("[TP Nearest] Toggled:", Value)
     end,
 })
 
@@ -313,15 +340,34 @@ PlayerTab:CreateToggle({
     end,
 })
 
+print("[AC Menu] Player tab created")
+
 -- ══════════════════════════════════════
---  DRAWING API - ESP
+--  DRAWING - FOV CIRCLE
+-- ══════════════════════════════════════
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Filled = false
+FOVCircle.Color = Color3.fromRGB(108, 84, 230)
+FOVCircle.Thickness = 2
+FOVCircle.Transparency = 0.5
+
+local function updateFOVCircle()
+    local mousePos = UserInputService:GetMouseLocation()
+    FOVCircle.Position = mousePos
+    FOVCircle.Radius = State.FOVSize
+    FOVCircle.Visible = State.FOVCircle
+end
+
+-- ══════════════════════════════════════
+--  ESP DRAWING
 -- ══════════════════════════════════════
 local ESPDrawings = {}
 
 local function clearESP()
     for _, drawing in ipairs(ESPDrawings) do
-        if drawing and drawing.Visible then
-            drawing:Remove()
+        if drawing then
+            pcall(function() drawing:Remove() end)
         end
     end
     ESPDrawings = {}
@@ -329,17 +375,20 @@ end
 
 local function drawESP()
     clearESP()
-    
     if not State.ESPEnabled then return end
     
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer or not player.Character then continue end
+        if isSameTeam(player) then continue end
         
         local character = player.Character
         local humanoid = character:FindFirstChildOfClass("Humanoid")
-        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        local hrp = character:FindFirstChild("HumanoidRootPart")
         
-        if not humanoid or not humanoidRootPart or humanoid.Health <= 0 then continue end
+        if not humanoid or not hrp or humanoid.Health <= 0 then continue end
+        
+        local screenPos, onScreen = Camera:WorldToScreenPoint(hrp.Position)
+        if not onScreen then continue end
         
         -- ESP Box
         if State.ESPBox then
@@ -348,14 +397,9 @@ local function drawESP()
             box.Filled = false
             box.Color = Color3.fromRGB(108, 84, 230)
             box.Thickness = 2
-            box.Transparency = 0.8
-            
-            local pos, onScreen = Camera:WorldToScreenPoint(humanoidRootPart.Position)
-            if onScreen then
-                box.Position = Vector2.new(pos.X - 50, pos.Y - 50)
-                box.Size = Vector2.new(100, 100)
-                table.insert(ESPDrawings, box)
-            end
+            box.Position = Vector2.new(screenPos.X - 50, screenPos.Y - 50)
+            box.Size = Vector2.new(100, 100)
+            table.insert(ESPDrawings, box)
         end
         
         -- ESP Line
@@ -364,17 +408,14 @@ local function drawESP()
             line.Visible = true
             line.Color = Color3.fromRGB(108, 84, 230)
             line.Thickness = 2
-            line.Transparency = 0.8
             
-            local pos, onScreen = Camera:WorldToScreenPoint(humanoidRootPart.Position)
-            if onScreen then
-                local screenSize = Vector2.new(1920, 1080) -- Adjust based on screen
-                local lineOriginY = State.ESPLinePos == "Top" and 0 or (State.ESPLinePos == "Bottom" and screenSize.Y or screenSize.Y / 2)
-                
-                line.From = Vector2.new(pos.X, lineOriginY)
-                line.To = Vector2.new(pos.X, pos.Y)
-                table.insert(ESPDrawings, line)
-            end
+            local lineOriginY = 0
+            if State.ESPLinePos == "Bottom" then lineOriginY = 1080 end
+            if State.ESPLinePos == "Center" then lineOriginY = 540 end
+            
+            line.From = Vector2.new(screenPos.X, lineOriginY)
+            line.To = Vector2.new(screenPos.X, screenPos.Y)
+            table.insert(ESPDrawings, line)
         end
         
         -- ESP Name
@@ -386,28 +427,25 @@ local function drawESP()
             nameText.Font = 2
             nameText.Text = player.Name
             
-            local pos, onScreen = Camera:WorldToScreenPoint(humanoidRootPart.Position)
-            if onScreen then
-                local offset = State.ESPNamePos == "Top" and -20 or 20
-                nameText.Position = Vector2.new(pos.X, pos.Y + offset)
-                table.insert(ESPDrawings, nameText)
-            end
+            local offset = State.ESPNamePos == "Top" and -25 or 25
+            nameText.Position = Vector2.new(screenPos.X - 30, screenPos.Y + offset)
+            table.insert(ESPDrawings, nameText)
         end
         
         -- ESP Distance
         if State.ESPDistance then
-            local distText = Drawing.new("Text")
-            distText.Visible = true
-            distText.Color = Color3.fromRGB(130, 130, 170)
-            distText.Size = 11
-            distText.Font = 2
-            local distance = (humanoidRootPart.Position - LocalCharacter:FindFirstChild("HumanoidRootPart").Position).Magnitude
-            distText.Text = string.format("%.1f stud", distance)
-            
-            local pos, onScreen = Camera:WorldToScreenPoint(humanoidRootPart.Position)
-            if onScreen then
-                local offset = State.ESPDistPos == "Top" and -35 or 35
-                distText.Position = Vector2.new(pos.X, pos.Y + offset)
+            local localHrp = LocalCharacter:FindFirstChild("HumanoidRootPart")
+            if localHrp then
+                local distance = (hrp.Position - localHrp.Position).Magnitude
+                local distText = Drawing.new("Text")
+                distText.Visible = true
+                distText.Color = Color3.fromRGB(130, 130, 170)
+                distText.Size = 11
+                distText.Font = 2
+                distText.Text = string.format("%.1f stud", distance)
+                
+                local offset = State.ESPDistPos == "Top" and -40 or 40
+                distText.Position = Vector2.new(screenPos.X - 30, screenPos.Y + offset)
                 table.insert(ESPDrawings, distText)
             end
         end
@@ -421,53 +459,25 @@ local function drawESP()
             healthBar.Thickness = 1
             healthBar.Transparency = 0.5
             
-            local pos, onScreen = Camera:WorldToScreenPoint(humanoidRootPart.Position)
-            if onScreen then
-                local barWidth = 3
-                local barHeight = 60
-                local healthPercent = humanoid.Health / humanoid.MaxHealth
-                
-                if State.ESPHealthPos == "Left" then
-                    healthBar.Position = Vector2.new(pos.X - 60, pos.Y - barHeight / 2)
-                elseif State.ESPHealthPos == "Right" then
-                    healthBar.Position = Vector2.new(pos.X + 50, pos.Y - barHeight / 2)
-                else
-                    healthBar.Position = Vector2.new(pos.X - barWidth / 2, pos.Y - 70)
-                end
-                
-                healthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
-                table.insert(ESPDrawings, healthBar)
+            local barWidth = 3
+            local barHeight = 60
+            local healthPercent = humanoid.Health / humanoid.MaxHealth
+            
+            if State.ESPHealthPos == "Left" then
+                healthBar.Position = Vector2.new(screenPos.X - 60, screenPos.Y - barHeight / 2)
+            elseif State.ESPHealthPos == "Right" then
+                healthBar.Position = Vector2.new(screenPos.X + 50, screenPos.Y - barHeight / 2)
+            else
+                healthBar.Position = Vector2.new(screenPos.X - barWidth / 2, screenPos.Y - 70)
             end
+            
+            healthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
+            table.insert(ESPDrawings, healthBar)
         end
     end
 end
 
--- ══════════════════════════════════════
---  DRAWING API - FOV CIRCLE
--- ══════════════════════════════════════
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = false
-FOVCircle.Filled = false
-FOVCircle.Color = Color3.fromRGB(108, 84, 230)
-FOVCircle.Thickness = 2
-FOVCircle.Transparency = 0.5
-
-local function updateFOVCircle()
-    local screenSize = UserInputService:GetMouseLocation()
-    FOVCircle.Position = screenSize
-    FOVCircle.Radius = State.FOVSize
-    FOVCircle.Visible = State.FOVCircle
-end
-
--- ══════════════════════════════════════
---  KEYBIND: SHOW / HIDE
--- ══════════════════════════════════════
-UserInputService.InputBegan:Connect(function(inp, gpe)
-    if gpe then return end
-    if inp.KeyCode == Enum.KeyCode.RightShift then
-        Window:Toggle()
-    end
-end)
+print("[AC Menu] ESP functions created")
 
 -- ══════════════════════════════════════
 --  AIMBOT SYSTEM
@@ -479,6 +489,7 @@ local function getClosestPlayerInFOV()
     
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer or not player.Character then continue end
+        if isSameTeam(player) then continue end
         
         local head = player.Character:FindFirstChild("Head")
         if not head then continue end
@@ -504,22 +515,19 @@ local function autoShoot()
     if not State.AutoShoot then return end
     
     local currentTime = tick()
-    if currentTime - lastShootTime < 0.1 then return end -- 100ms cooldown
+    if currentTime - lastShootTime < 0.1 then return end
     lastShootTime = currentTime
     
-    -- Try to find and fire weapon
     local tool = LocalCharacter:FindFirstChildOfClass("Tool")
-    if tool then
-        local fireFunc = tool:FindFirstChild("Fire") or tool:FindFirstChildOfClass("RemoteEvent")
-        if fireFunc then
-            fireFunc:FireServer()
+    if tool and tool:FindFirstChild("Handle") then
+        local fireEvent = tool:FindFirstChild("Fire")
+        if fireEvent then
+            pcall(function() fireEvent:FireServer() end)
         end
     end
-    
-    -- Alternative: simulate mouse click
-    UserInputService:SendMouseButtonEvent(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y, 0, true)
-    UserInputService:SendMouseButtonEvent(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y, 0, false)
 end
+
+print("[AC Menu] Aimbot functions created")
 
 -- ══════════════════════════════════════
 --  FLY SYSTEM
@@ -528,13 +536,9 @@ local function startFly()
     if Flying then return end
     Flying = true
     
-    local char = LocalCharacter
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hrp = LocalCharacter:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
     
-    if not hrp or not hum then return end
-    
-    -- Setup velocity and gyro
     FlyVelocity.Parent = hrp
     FlyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
     
@@ -542,41 +546,40 @@ local function startFly()
     FlyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
     FlyGyro.CFrame = hrp.CFrame
     
-    -- Movement loop
     FlyConnection = RunService.RenderStepped:Connect(function()
         if not Flying or not LocalCharacter then return end
         
         local hrp = LocalCharacter:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         
-        local moveDirection = Vector3.new(0, 0, 0)
+        local moveDir = Vector3.new(0, 0, 0)
         
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveDirection = moveDirection + (Camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+            moveDir = moveDir + (Camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveDirection = moveDirection - Camera.CFrame.RightVector
+            moveDir = moveDir - Camera.CFrame.RightVector
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveDirection = moveDirection - (Camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+            moveDir = moveDir - (Camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveDirection = moveDirection + Camera.CFrame.RightVector
+            moveDir = moveDir + Camera.CFrame.RightVector
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            moveDirection = moveDirection + Vector3.new(0, 1, 0)
+            moveDir = moveDir + Vector3.new(0, 1, 0)
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-            moveDirection = moveDirection - Vector3.new(0, 1, 0)
+            moveDir = moveDir + Vector3.new(0, -1, 0)
         end
         
-        if moveDirection.Magnitude > 0 then
-            moveDirection = moveDirection.Unit
-        end
+        if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
         
-        FlyVelocity.Velocity = moveDirection * State.FlySpeed
+        FlyVelocity.Velocity = moveDir * State.FlySpeed
         FlyGyro.CFrame = Camera.CFrame
     end)
+    
+    print("[Fly] Started!")
 end
 
 local function stopFly()
@@ -589,6 +592,8 @@ local function stopFly()
     
     FlyVelocity.Parent = nil
     FlyGyro.Parent = nil
+    
+    print("[Fly] Stopped!")
 end
 
 -- ══════════════════════════════════════
@@ -598,9 +603,7 @@ local velocityBV = nil
 local velocityConnection = nil
 
 local function startVelocity()
-    local char = LocalCharacter
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    
+    local hrp = LocalCharacter:FindFirstChild("HumanoidRootPart")
     if not hrp or velocityBV then return end
     
     velocityBV = Instance.new("BodyVelocity")
@@ -613,27 +616,27 @@ local function startVelocity()
         local hrp = LocalCharacter:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
         
-        local moveDirection = Vector3.new(0, 0, 0)
+        local moveDir = Vector3.new(0, 0, 0)
         
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveDirection = moveDirection + (Camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+            moveDir = moveDir + (Camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveDirection = moveDirection - Camera.CFrame.RightVector
+            moveDir = moveDir - Camera.CFrame.RightVector
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveDirection = moveDirection - (Camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+            moveDir = moveDir - (Camera.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
         end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveDirection = moveDirection + Camera.CFrame.RightVector
+            moveDir = moveDir + Camera.CFrame.RightVector
         end
         
-        if moveDirection.Magnitude > 0 then
-            moveDirection = moveDirection.Unit
-        end
+        if moveDir.Magnitude > 0 then moveDir = moveDir.Unit end
         
-        velocityBV.Velocity = moveDirection * State.VelocitySpeed
+        velocityBV.Velocity = moveDir * State.VelocitySpeed
     end)
+    
+    print("[Velocity] Started!")
 end
 
 local function stopVelocity()
@@ -646,16 +649,22 @@ local function stopVelocity()
         velocityBV.Parent = nil
         velocityBV = nil
     end
+    
+    print("[Velocity] Stopped!")
 end
+
+print("[AC Menu] Movement systems created")
 
 -- ══════════════════════════════════════
 --  MAIN LOOP
 -- ══════════════════════════════════════
+print("[AC Menu] Creating main loop...")
+
 RunService.RenderStepped:Connect(function()
-    -- Update FOV Circle
+    -- FOV Circle
     updateFOVCircle()
     
-    -- Update ESP
+    -- ESP
     if State.ESPEnabled then
         drawESP()
     else
@@ -663,17 +672,14 @@ RunService.RenderStepped:Connect(function()
     end
     
     -- Aimbot
-    if State.Aimbot or State.AimAssist then
+    if State.Aimbot or State.AimAssist or State.AutoShoot then
         local target = getClosestPlayerInFOV()
         if target and target.Character then
             local head = target.Character:FindFirstChild("Head")
             if head then
                 if State.Aimbot then
-                    -- Lock camera to head
                     Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
                 end
-                
-                -- Auto shoot if enabled
                 if State.AutoShoot then
                     autoShoot()
                 end
@@ -697,80 +703,65 @@ RunService.RenderStepped:Connect(function()
     
     -- Auto Heal
     if State.AutoHeal then
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum.Health = hum.MaxHealth
-            end
-        end
+        local hum = LocalCharacter:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health = hum.MaxHealth end
     end
     
-    -- TP to Nearest
+    -- TP Nearest
     if State.TPNearest then
-        local nearestPlayer = nil
-        local nearestDistance = math.huge
+        local nearest = nil
+        local nearestDist = math.huge
+        local localHrp = LocalCharacter:FindFirstChild("HumanoidRootPart")
         
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player == LocalPlayer or not player.Character then continue end
+        if localHrp then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player == LocalPlayer or not player.Character then continue end
+                if isSameTeam(player) then continue end
+                
+                local targetHrp = player.Character:FindFirstChild("HumanoidRootPart")
+                if not targetHrp then continue end
+                
+                local dist = (targetHrp.Position - localHrp.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearest = player
+                end
+            end
             
-            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-            local localHrp = LocalCharacter:FindFirstChild("HumanoidRootPart")
-            if not hrp or not localHrp then continue end
-            
-            local distance = (hrp.Position - localHrp.Position).Magnitude
-            if distance < nearestDistance then
-                nearestDistance = distance
-                nearestPlayer = player
+            if nearest and nearest.Character then
+                local targetHrp = nearest.Character:FindFirstChild("HumanoidRootPart")
+                if targetHrp then
+                    localHrp.CFrame = targetHrp.CFrame + Vector3.new(5, 0, 0)
+                    print("[TP] Teleported to:", nearest.Name)
+                end
             end
         end
         
-        if nearestPlayer and nearestPlayer.Character then
-            local targetHrp = nearestPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local localHrp = LocalCharacter:FindFirstChild("HumanoidRootPart")
-            if targetHrp and localHrp then
-                localHrp.CFrame = targetHrp.CFrame + Vector3.new(5, 0, 0)
-            end
-            State.TPNearest = false
-        end
+        State.TPNearest = false
     end
 end)
 
-print("[AC Test Menu] Ready │ RightShift = show/hide")
+-- ══════════════════════════════════════
+--  KEYBIND
+-- ══════════════════════════════════════
+UserInputService.InputBegan:Connect(function(inp, gpe)
+    if gpe then return end
+    if inp.KeyCode == Enum.KeyCode.RightShift then
+        Window:Toggle()
+        print("[AC Menu] Window toggled")
+    end
+end)
 
--- Cleanup on disconnect
+-- ══════════════════════════════════════
+--  CLEANUP
+-- ══════════════════════════════════════
 LocalPlayer.CharacterAdded:Connect(function(newChar)
     LocalCharacter = newChar
-    if Flying then
-        stopFly()
-    end
-    if State.Velocity then
-        stopVelocity()
-    end
-end)
-
--- Cleanup on script destroy
-game:GetService("CoreGui").ScreenGui:GetPropertyChangedSignal("Visible"):Connect(function()
-    if not game:GetService("CoreGui").ScreenGui.Visible then
-        clearESP()
-        FOVCircle.Visible = false
-        stopFly()
-        stopVelocity()
-    end
-end)
-
--- Final cleanup function
-local function cleanup()
-    if Flying then stopFly() end
-    if State.Velocity then stopVelocity() end
+    stopFly()
+    stopVelocity()
     clearESP()
-    FOVCircle:Remove()
-    for _, drawing in ipairs(ESPDrawings) do
-        if drawing then pcall(function() drawing:Remove() end) end
-    end
-end
-
--- Handle script reload
-script.Parent:WaitForChild("Parent"):GetPropertyChangedSignal("Parent"):Connect(function()
-    cleanup()
+    print("[AC Menu] Character respawned")
 end)
+
+print("[AC Menu] ✅ Initialization complete! Press RightShift to toggle menu")
+print("[AC Menu] Enjoy! Team check enabled - you won't target teammates")
